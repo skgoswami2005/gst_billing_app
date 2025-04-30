@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/invoice.dart';
 import '../services/database_helper.dart';
 import 'package:intl/intl.dart';
+import 'invoice_details_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -60,10 +61,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         borderRadius: BorderRadius.circular(12)),
                     child: ListTile(
                       contentPadding: const EdgeInsets.all(16),
-                      title: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      title: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Invoice #${invoice.id.substring(0, 8)}',
+                          Text('Invoice #${invoice.id.substring(0, 10)}',
                               style:
                                   const TextStyle(fontWeight: FontWeight.bold)),
                           Text('₹${invoice.totalAmount.toStringAsFixed(2)}',
@@ -86,7 +88,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       trailing: IconButton(
                         icon: const Icon(Icons.arrow_forward_ios),
                         onPressed: () {
-                          // TODO: Show invoice details
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => InvoiceDetailsScreen(
+                                invoice: invoice,
+                              ),
+                            ),
+                          );
                         },
                       ),
                     ),

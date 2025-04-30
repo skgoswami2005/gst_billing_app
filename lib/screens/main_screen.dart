@@ -11,14 +11,16 @@ class MainScreen extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('GST Billing App',
+          title: const Text('TATA Retail',
               style: TextStyle(fontWeight: FontWeight.bold)),
           bottom: const TabBar(
             tabs: [
               Tab(text: 'BILLING'),
               Tab(text: 'HISTORY'),
             ],
-            labelStyle: TextStyle(fontWeight: FontWeight.bold),
+            labelStyle:
+                TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+            indicatorColor: Colors.white,
           ),
           centerTitle: true,
           backgroundColor: Colors.blue[700],

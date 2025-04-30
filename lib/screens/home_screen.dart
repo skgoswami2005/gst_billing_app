@@ -16,7 +16,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
   final _searchController = TextEditingController();
-  bool _isSearching = false;
   double _selectedGST = 5.0;
   bool _isLoading = true;
 
@@ -103,6 +102,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     await DatabaseHelper.instance.saveInvoice(invoice);
+    await DatabaseHelper.instance
+        .deleteAllProducts(); // Add this line to clear products
     setState(() {
       cartItems.clear();
     });
@@ -118,51 +119,42 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: _isSearching
-            ? TextField(
-                controller: _searchController,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  hintText: 'Search products...',
-                  hintStyle: TextStyle(color: Colors.white70),
-                  border: InputBorder.none,
-                ),
-                onChanged: (query) => _filterProducts(query),
-              )
-            : const Text(
-                'GST Billing App',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-        actions: [
-          IconButton(
-            icon: Icon(_isSearching ? Icons.close : Icons.search),
-            onPressed: () {
-              setState(() {
-                _isSearching = !_isSearching;
-                if (!_isSearching) {
-                  _searchController.clear();
-                  _filterProducts('');
-                }
-              });
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.history),
-            onPressed: _showTransactionHistory,
-          ),
-        ],
-        centerTitle: true,
-        backgroundColor: Colors.blue[700],
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
+      body: Column(
+        children: [
+          // Search bar
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Row(
               children: [
                 Expanded(
-                  child: Padding(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search products...',
+                      hintStyle: TextStyle(color: Colors.grey[600]),
+                      prefixIcon: const Icon(Icons.search),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    onChanged: _filterProducts,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // List view
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                     child: cartItems.isEmpty
                         ? Center(
@@ -266,9 +258,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                           ),
                   ),
-                ),
-              ],
-            ),
+          ),
+        ],
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -342,10 +334,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
-  }
-
-  void _showTransactionHistory() {
-    // TODO: Implement transaction history view
   }
 
   void _showAddProductDialog() {

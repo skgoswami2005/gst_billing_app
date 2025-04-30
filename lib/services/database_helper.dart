@@ -100,6 +100,11 @@ class DatabaseHelper {
     );
   }
 
+  Future<void> deleteAllProducts() async {
+    final db = await instance.database;
+    await db.delete('products');
+  }
+
   Future<List<Product>> searchProducts(String query) async {
     final db = await instance.database;
     final result = await db.query(
