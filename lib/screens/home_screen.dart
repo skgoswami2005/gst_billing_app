@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:gst_billing_app/models/invoice.dart';
 import '../models/product.dart';
 import '../services/database_helper.dart';
 
@@ -78,6 +78,41 @@ class _HomeScreenState extends State<HomeScreen> {
         0,
         (sum, item) => sum + item.totalPrice,
       );
+
+  void _generateInvoice() async {
+    if (cartItems.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add items to generate invoice')),
+      );
+      return;
+    }
+
+    final invoice = Invoice(
+      id: DateTime.now().toString(),
+      items: cartItems
+          .map((item) => {
+                'id': item.id,
+                'name': item.name,
+                'price': item.price,
+                'gstPercentage': item.gstPercentage,
+                'totalPrice': item.totalPrice,
+              })
+          .toList(),
+      totalAmount: totalAmount,
+      createdAt: DateTime.now().toIso8601String(),
+    );
+
+    await DatabaseHelper.instance.saveInvoice(invoice);
+    setState(() {
+      cartItems.clear();
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invoice generated successfully')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -289,7 +324,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 8),
+                FloatingActionButton(
+                  onPressed: _generateInvoice,
+                  backgroundColor: Colors.green[600],
+                  child: const Icon(Icons.receipt_long, color: Colors.white),
+                ),
+                const SizedBox(width: 8),
                 FloatingActionButton(
                   onPressed: () => _showAddProductDialog(),
                   backgroundColor: Colors.blue[700],
