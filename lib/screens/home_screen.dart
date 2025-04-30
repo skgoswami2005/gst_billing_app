@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/product.dart';
+import '../services/database_helper.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,23 +18,60 @@ class _HomeScreenState extends State<HomeScreen> {
   final _searchController = TextEditingController();
   bool _isSearching = false;
   double _selectedGST = 5.0;
+  bool _isLoading = true;
 
-  void _addProduct() {
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    setState(() => _isLoading = true);
+    final products = await DatabaseHelper.instance.getAllProducts();
+    setState(() {
+      cartItems.clear();
+      cartItems.addAll(products);
+      _isLoading = false;
+    });
+  }
+
+  void _addProduct() async {
     if (_formKey.currentState!.validate()) {
+      final product = Product(
+        id: DateTime.now().toString(),
+        name: _nameController.text,
+        price: double.parse(_priceController.text),
+        gstPercentage: _selectedGST,
+      );
+
+      await DatabaseHelper.instance.insertProduct(product);
       setState(() {
-        cartItems.add(
-          Product(
-            id: DateTime.now().toString(),
-            name: _nameController.text,
-            price: double.parse(_priceController.text),
-            gstPercentage: _selectedGST,
-          ),
-        );
+        cartItems.insert(0, product);
       });
       _nameController.clear();
       _priceController.clear();
       Navigator.pop(context);
     }
+  }
+
+  Future<void> _filterProducts(String query) async {
+    if (query.isEmpty) {
+      await _loadProducts();
+    } else {
+      final products = await DatabaseHelper.instance.searchProducts(query);
+      setState(() {
+        cartItems.clear();
+        cartItems.addAll(products);
+      });
+    }
+  }
+
+  Future<void> _deleteProduct(String id, int index) async {
+    await DatabaseHelper.instance.deleteProduct(id);
+    setState(() {
+      cartItems.removeAt(index);
+    });
   }
 
   double get totalAmount => cartItems.fold(
@@ -55,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   hintStyle: TextStyle(color: Colors.white70),
                   border: InputBorder.none,
                 ),
-                onChanged: _filterProducts,
+                onChanged: (query) => _filterProducts(query),
               )
             : const Text(
                 'GST Billing App',
@@ -84,114 +122,118 @@ class _HomeScreenState extends State<HomeScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: cartItems.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: Colors.blue[50],
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.shopping_cart_outlined,
-                              size: 64,
-                              color: Colors.blue[700],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Your cart is empty',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: cartItems.length,
-                      itemBuilder: (context, index) {
-                        final item = cartItems[index];
-                        return Dismissible(
-                          key: Key(item.id),
-                          direction: DismissDirection.endToStart,
-                          background: Container(
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.only(right: 20),
-                            decoration: BoxDecoration(
-                              color: Colors.red[400],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.delete_outline,
-                              color: Colors.white,
-                            ),
-                          ),
-                          onDismissed: (direction) {
-                            setState(() {
-                              cartItems.removeAt(index);
-                            });
-                          },
-                          child: Card(
-                            elevation: 2,
-                            margin: const EdgeInsets.symmetric(vertical: 8),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.all(16),
-                              title: Text(
-                                item.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: cartItems.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(24),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue[50],
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.shopping_cart_outlined,
+                                    size: 64,
+                                    color: Colors.blue[700],
+                                  ),
                                 ),
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Base Price: ₹${item.price.toStringAsFixed(2)}',
-                                    style: TextStyle(color: Colors.grey[600]),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Your cart is empty',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.grey[600],
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                  Text(
-                                    'GST: ${item.gstPercentage}%',
-                                    style: TextStyle(color: Colors.grey[600]),
-                                  ),
-                                  Text(
-                                    'CGST: ₹${item.cgst.toStringAsFixed(2)} • SGST: ₹${item.sgst.toStringAsFixed(2)}',
-                                    style: TextStyle(color: Colors.grey[600]),
-                                  ),
-                                ],
-                              ),
-                              trailing: Text(
-                                '₹${item.totalPrice.toStringAsFixed(2)}',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue[700],
                                 ),
-                              ),
+                              ],
                             ),
+                          )
+                        : ListView.builder(
+                            itemCount: cartItems.length,
+                            itemBuilder: (context, index) {
+                              final item = cartItems[index];
+                              return Dismissible(
+                                key: Key(item.id),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red[400],
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                onDismissed: (direction) =>
+                                    _deleteProduct(item.id, index),
+                                child: Card(
+                                  elevation: 2,
+                                  margin:
+                                      const EdgeInsets.symmetric(vertical: 8),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: ListTile(
+                                    contentPadding: const EdgeInsets.all(16),
+                                    title: Text(
+                                      item.name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Base Price: ₹${item.price.toStringAsFixed(2)}',
+                                          style: TextStyle(
+                                              color: Colors.grey[600]),
+                                        ),
+                                        Text(
+                                          'GST: ${item.gstPercentage}%',
+                                          style: TextStyle(
+                                              color: Colors.grey[600]),
+                                        ),
+                                        Text(
+                                          'CGST: ₹${item.cgst.toStringAsFixed(2)} • SGST: ₹${item.sgst.toStringAsFixed(2)}',
+                                          style: TextStyle(
+                                              color: Colors.grey[600]),
+                                        ),
+                                      ],
+                                    ),
+                                    trailing: Text(
+                                      '₹${item.totalPrice.toStringAsFixed(2)}',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue[700],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -259,10 +301,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
-  }
-
-  void _filterProducts(String query) {
-    // TODO: Implement product filtering
   }
 
   void _showTransactionHistory() {
