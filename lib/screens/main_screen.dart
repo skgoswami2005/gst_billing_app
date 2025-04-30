@@ -10,6 +10,7 @@ class MainScreen extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
+        backgroundColor: Colors.white,
         appBar: AppBar(
           title: const Text('TATA Retail',
               style: TextStyle(fontWeight: FontWeight.bold)),
